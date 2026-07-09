@@ -34,6 +34,15 @@ type PendingTicket = {
   withdrawFees: string;
 };
 
+type PendingTicketView = {
+  ticket_id?: string;
+  user?: string;
+  kapt_amount?: string;
+  apt_amount?: string;
+  unlock_timestamp?: string;
+  withdraw_fees?: string;
+};
+
 type ClaimedTicket = {
   withdrawalId: string;
   aptAmount: string;
@@ -147,14 +156,23 @@ async function fetchFaBalance(address: string, metadataAddress: string) {
 }
 
 async function fetchPendingTickets(address: string) {
-  const [tickets] = await aptos.viewJson<[PendingTicket[]]>({
+  const [tickets] = await aptos.viewJson<[PendingTicketView[]]>({
     payload: {
       function: `${WITHDRAWAL_MANAGER_MODULE}::get_user_tickets`,
       typeArguments: [],
       functionArguments: [address],
     },
   });
-  return tickets ?? [];
+  return (tickets ?? [])
+    .map((ticket) => ({
+      ticketId: ticket.ticket_id ?? "",
+      user: ticket.user ?? "",
+      kaptAmount: ticket.kapt_amount ?? "0",
+      aptAmount: ticket.apt_amount ?? "0",
+      unlockTimestamp: ticket.unlock_timestamp ?? "0",
+      withdrawFees: ticket.withdraw_fees ?? "0",
+    }))
+    .filter((ticket) => ticket.ticketId && ticket.user && /^\d+$/.test(ticket.unlockTimestamp));
 }
 
 async function fetchWithdrawalPeriod() {
