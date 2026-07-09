@@ -164,6 +164,16 @@ a {
 
 .metric strong {
   font-size: 1.25rem;
+  display: block;
+  word-break: break-word;
+}
+
+.metric small {
+  display: block;
+  margin-top: 8px;
+  color: #6c776d;
+  font-size: 0.84rem;
+  word-break: break-word;
 }
 
 .grid {
@@ -237,6 +247,48 @@ a {
   border: 1px solid rgba(24, 35, 25, 0.12);
   border-radius: 16px;
   background: white;
+}
+
+.action-form__meta {
+  margin: -2px 0 12px;
+}
+
+.action-form__meta span,
+.action-form__meta small {
+  display: block;
+}
+
+.action-form__meta small {
+  margin-top: 4px;
+  color: #6b776e;
+  font-size: 0.84rem;
+  word-break: break-word;
+}
+
+.quick-select {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.quick-select__button {
+  border: 1px solid rgba(13, 107, 83, 0.18);
+  border-radius: 999px;
+  padding: 8px 12px;
+  background: rgba(13, 107, 83, 0.08);
+  color: #0d6b53;
+  font-weight: 700;
+}
+
+.quick-select__button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.quick-select__button--ghost {
+  background: rgba(24, 35, 25, 0.05);
+  color: #243229;
 }
 
 .button {

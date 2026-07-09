@@ -61,6 +61,7 @@ const EMPTY_BALANCES: Balances = {
   kapt: "0",
   stkapt: "0",
 };
+const QUICK_PERCENTAGES = [25, 50, 100] as const;
 
 function shortAddress(address: string) {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
@@ -73,6 +74,33 @@ function formatTokenAmount(raw: string, decimals = DECIMALS) {
   const fraction = value % base;
   if (fraction === 0n) return whole.toString();
   return `${whole.toString()}.${fraction.toString().padStart(decimals, "0").replace(/0+$/, "")}`;
+}
+
+function addThousandsSeparators(value: string) {
+  const [wholePart, fractionPart] = value.split(".");
+  const formattedWhole = wholePart.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return fractionPart ? `${formattedWhole}.${fractionPart}` : formattedWhole;
+}
+
+function formatDisplayAmount(raw: string, decimals = DECIMALS, visibleFractionDigits = 4) {
+  const exact = formatTokenAmount(raw, decimals);
+  const [wholePart, fractionPart = ""] = exact.split(".");
+
+  if (!fractionPart) return addThousandsSeparators(wholePart);
+
+  const visibleFraction = fractionPart.slice(0, visibleFractionDigits).replace(/0+$/, "");
+  if (visibleFraction) return `${addThousandsSeparators(wholePart)}.${visibleFraction}`;
+
+  return BigInt(raw || "0") === 0n ? "0" : `<0.${"0".repeat(Math.max(visibleFractionDigits - 1, 0))}1`;
+}
+
+function formatBalanceDetail(raw: string, decimals = DECIMALS) {
+  return `${addThousandsSeparators(formatTokenAmount(raw, decimals))} exact`;
+}
+
+function getPercentageAmount(raw: string, percentage: number) {
+  const scaled = (BigInt(raw || "0") * BigInt(percentage)) / 100n;
+  return formatTokenAmount(scaled.toString());
 }
 
 function parseTokenInput(input: string, decimals = DECIMALS) {
@@ -432,9 +460,9 @@ function WalletShell() {
           </div>
 
           <div className="wallet-stats">
-            <Metric label="APT" value={formatTokenAmount(balances.apt)} />
-            <Metric label="kAPT" value={formatTokenAmount(balances.kapt)} />
-            <Metric label="stkAPT" value={formatTokenAmount(balances.stkapt)} />
+            <Metric label="APT" rawValue={balances.apt} />
+            <Metric label="kAPT" rawValue={balances.kapt} />
+            <Metric label="stkAPT" rawValue={balances.stkapt} />
           </div>
         </div>
       </header>
@@ -454,6 +482,8 @@ function WalletShell() {
               onChange={setStakeAmount}
               onSubmit={submitStake}
               buttonLabel="Convert to stkAPT"
+              balanceLabel="Available kAPT"
+              balanceRawValue={balances.kapt}
             />
             <ActionForm
               title="stkAPT → kAPT"
@@ -462,6 +492,8 @@ function WalletShell() {
               onChange={setUnstakeAmount}
               onSubmit={submitUnstake}
               buttonLabel="Convert to kAPT"
+              balanceLabel="Available stkAPT"
+              balanceRawValue={balances.stkapt}
             />
           </div>
         </section>
@@ -479,6 +511,8 @@ function WalletShell() {
             onChange={setWithdrawAmount}
             onSubmit={submitWithdrawal}
             buttonLabel="Request withdrawal"
+            balanceLabel="Available kAPT"
+            balanceRawValue={balances.kapt}
           />
 
           <div className="note">
@@ -625,11 +659,12 @@ function WalletShell() {
   );
 }
 
-function Metric({ label, value }: { label: string; value: string }) {
+function Metric({ label, rawValue }: { label: string; rawValue: string }) {
   return (
     <div className="metric">
       <span>{label}</span>
-      <strong>{value}</strong>
+      <strong>{formatDisplayAmount(rawValue)}</strong>
+      <small>{formatBalanceDetail(rawValue)}</small>
     </div>
   );
 }
@@ -650,6 +685,8 @@ function ActionForm({
   onSubmit,
   title,
   value,
+  balanceLabel,
+  balanceRawValue,
 }: {
   title: string;
   inputLabel: string;
@@ -657,7 +694,12 @@ function ActionForm({
   onChange: (value: string) => void;
   onSubmit: () => void;
   buttonLabel: string;
+  balanceLabel: string;
+  balanceRawValue: string;
 }) {
+  const exactBalance = formatTokenAmount(balanceRawValue);
+  const hasBalance = BigInt(balanceRawValue || "0") > 0n;
+
   return (
     <div className="action-form">
       <h3>{title}</h3>
@@ -670,6 +712,26 @@ function ActionForm({
           onChange={(event) => onChange(event.target.value)}
         />
       </label>
+      <div className="action-form__meta">
+        <span>{`${balanceLabel}: ${formatDisplayAmount(balanceRawValue)}`}</span>
+        <small>{formatBalanceDetail(balanceRawValue)}</small>
+      </div>
+      <div className="quick-select">
+        {QUICK_PERCENTAGES.map((percentage) => (
+          <button
+            key={percentage}
+            type="button"
+            className="quick-select__button"
+            disabled={!hasBalance}
+            onClick={() => onChange(getPercentageAmount(balanceRawValue, percentage))}
+          >
+            {percentage}%
+          </button>
+        ))}
+        <button type="button" className="quick-select__button quick-select__button--ghost" onClick={() => onChange(exactBalance)}>
+          Max
+        </button>
+      </div>
       <button className="button" onClick={onSubmit}>
         {buttonLabel}
       </button>
